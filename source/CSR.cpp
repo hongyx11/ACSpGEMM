@@ -29,8 +29,8 @@
 //  THE SOFTWARE.
 //
 
-#include "CSR.h"
-#include "COO.h"
+#include "acspgemm/CSR.h"
+#include "acspgemm/COO.h"
 
 #include <stdint.h>
 #include <string>

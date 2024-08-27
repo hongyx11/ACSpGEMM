@@ -43,12 +43,12 @@
 #include <cuda.h>
 #include <limits>
 #include <cub/cub.cuh>
-#include "device/MultiplyKernels.h"
-#include "device/Chunk.cuh"
-#include "device/HelperFunctions.cuh"
-#include "device/SortAndCombine.cuh"
-#include "device/WorkDistribution.cuh"
-#include "device/ARowStorage.cuh"
+#include "acspgemm/device/MultiplyKernels.h"
+#include "acspgemm/device/Chunk.cuh"
+#include "acspgemm/device/HelperFunctions.cuh"
+#include "acspgemm/device/SortAndCombine.cuh"
+#include "acspgemm/device/WorkDistribution.cuh"
+#include "acspgemm/device/ARowStorage.cuh"
 
 
 

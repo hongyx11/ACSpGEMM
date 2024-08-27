@@ -29,8 +29,8 @@
 //  THE SOFTWARE.
 //
 
-#include "COO.h"
-#include "Vector.h"
+#include "acspgemm/COO.h"
+#include "acspgemm/Vector.h"
 
 #include <string>
 #include <sstream>

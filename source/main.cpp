@@ -48,17 +48,17 @@
 #include <cuda_runtime.h>
 
 // Local includes
-#include "CSR.h"
-#include "COO.h"
-#include "Vector.h"
-#include "dCSR.h"
-#include "dVector.h"
-#include "Multiply.h"
-// #include "Transpose.h"
-#include "Compare.h"
+#include "acspgemm/CSR.h"
+#include "acspgemm/COO.h"
+#include "acspgemm/Vector.h"
+#include "acspgemm/dCSR.h"
+#include "acspgemm/dVector.h"
+#include "acspgemm/Multiply.h"
+#include "acspgemm/Transpose.h"
+#include "acspgemm/Compare.h"
 
 // CuSparse include
-#include "cusparse12/include/cuSparseMultiply.h"
+// #include "cusparse12/include/cuSparseMultiply.h"
 
 // // Nsparse include
 // #ifndef NONSPARSE
@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
     convert(dcsr_mat, csr_mat, padding);
 
     // Cusparse object
-    cuSPARSE::CuSparseTest<DataType> cusparse;
+    // cuSPARSE::CuSparseTest<DataType> cusparse;
 
     // bool transpose = (dcsr_mat.rows != dcsr_mat.cols);
     // if (transpose)
@@ -258,25 +258,25 @@ int main(int argc, char *argv[])
     bool test_data = false;
     uint32_t cusparse_nnz;
     float cusparse_performance = 0.0f;
-    try {
-        for (uint32_t i = 0; i < warmupiterations; ++i)
-        {
-            std::cerr << "warmupIteration: " << i + 1 << "\n";
-            cusparse.Multiply(dcsr_mat, transpose ? dcsr_T_mat : dcsr_mat, d_cusparse_result_mat, cusparse_nnz);
-        }
-        for (uint32_t i = 0; i < iterations; ++i)
-        {
-            std::cerr << "Iteration: " << i + 1 << "\n";
-            cudaDeviceSynchronize();
-            cusparse_performance += cusparse.Multiply(dcsr_mat, transpose ? dcsr_T_mat : dcsr_mat, d_cusparse_result_mat, cusparse_nnz);
-            cudaDeviceSynchronize();
-        }
-    }
-    catch (std::exception&)
-    {
-        std::cout << "Caught exception in cusparse\n";
-        cusparse_performance = -1.0f;
-    }
+    // try {
+    //     for (uint32_t i = 0; i < warmupiterations; ++i)
+    //     {
+    //         std::cerr << "warmupIteration: " << i + 1 << "\n";
+    //         cusparse.Multiply(dcsr_mat, transpose ? dcsr_T_mat : dcsr_mat, d_cusparse_result_mat, cusparse_nnz);
+    //     }
+    //     for (uint32_t i = 0; i < iterations; ++i)
+    //     {
+    //         std::cerr << "Iteration: " << i + 1 << "\n";
+    //         cudaDeviceSynchronize();
+    //         cusparse_performance += cusparse.Multiply(dcsr_mat, transpose ? dcsr_T_mat : dcsr_mat, d_cusparse_result_mat, cusparse_nnz);
+    //         cudaDeviceSynchronize();
+    //     }
+    // }
+    // catch (std::exception&)
+    // {
+    //     std::cout << "Caught exception in cusparse\n";
+    //     cusparse_performance = -1.0f;
+    // }
 
     std::cout << "Overall Duration (cusparse): " << cusparse_performance / iterations << " ms\n";
     std::cout << "-----------------------------------------------\n";

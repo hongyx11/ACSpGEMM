@@ -40,8 +40,8 @@
 
 #pragma once
 
-#include "device/MultiplyKernels.h"
-#include "device/Chunk.cuh"
+#include "acspgemm/device/MultiplyKernels.h"
+#include "acspgemm/device/Chunk.cuh"
 
 template<typename VALUE_TYPE, typename INDEX_TYPE, typename OFFSET_TYPE>
 __global__ void copyChunks(void* const* __restrict chunks_pointers, const uint32_t* __restrict chunk_pointer_alloc, 

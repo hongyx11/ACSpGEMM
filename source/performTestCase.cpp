@@ -59,16 +59,16 @@
 #endif
 
 // Local includes
-#include "CSR.h"
-#include "COO.h"
-#include "Vector.h"
-#include "dCSR.h"
-#include "dVector.h"
-#include "Multiply.h"
-#include "Transpose.h"
-#include "Compare.h"
-#include "consistent_memory.h"
-#include "CustomExceptions.h"
+#include "acspgemm/CSR.h"
+#include "acspgemm/COO.h"
+#include "acspgemm/Vector.h"
+#include "acspgemm/dCSR.h"
+#include "acspgemm/dVector.h"
+#include "acspgemm/Multiply.h"
+#include "acspgemm/Transpose.h"
+#include "acspgemm/Compare.h"
+#include "acspgemm/consistent_memory.h"
+#include "acspgemm/CustomExceptions.h"
 
 #ifdef _WIN32
 #include <filesystem>

@@ -29,8 +29,8 @@
 //  THE SOFTWARE.
 //
 
-#include <devicetools/error.h>
-#include <devicetools/memory.h>
+#include "acspgemm/devicetools/error.h"
+#include "acspgemm/devicetools/memory.h"
 #include <cuda.h>
 #include <cuda_runtime.h>
 

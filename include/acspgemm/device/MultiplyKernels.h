@@ -44,7 +44,7 @@
 #include <tuple>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include "MergeCaseOffsets.h"
+#include "acspgemm/MergeCaseOffsets.h"
 
 const int RESTART_OFF = 0;
 const int RESTART_WRONG_CASE = 1;

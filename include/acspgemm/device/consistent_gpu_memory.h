@@ -29,67 +29,65 @@
 //  THE SOFTWARE.
 //
 
-
-#ifndef INCLUDED_CUDA_MEMORY
-#define INCLUDED_CUDA_MEMORY
-
 #pragma once
 
-#include <cstddef>
+#include <utility>
+#include "acspgemm/devicetools/memory.h"
+#include "acspgemm/memory_space.h"
+#include "acspgemm/consistent_memory.h"
 
-#include <cuda_runtime.h>
-
-#include <devicetools/unique_handle.h>
-
-
-namespace CU
-{
-	struct MemFreeDeleter
+namespace ACSpGEMM {
+	template<>
+	class ConsistentMemory<MemorySpace::device> : RegisteredMemory
 	{
-		void operator ()(CUdeviceptr ptr) const
+		size_t _size;
+		CU::unique_ptr _ptr;
+
+		size_t clear() override
 		{
-			cudaFree(reinterpret_cast<void*>(ptr));
+			auto s = _size;
+			reset(0);
+			return s;
+		}
+	public:
+		ConsistentMemory() : _size(0)
+		{
+			register_consistent_memory(this);
+		}
+
+		~ConsistentMemory()
+		{
+			unregister_consistent_memory(this);
+		}
+
+		operator CUdeviceptr() const noexcept { return _ptr; }
+
+		template <typename T = void>
+		T* get() const noexcept { return reinterpret_cast<T*>(_ptr.operator long long unsigned int()); }
+
+		void increaseMemRetainData(size_t size)
+		{
+			CU::unique_ptr tmp_ptr = CU::allocMemory(_size + size);
+			cudaMemcpy(tmp_ptr.get(), _ptr.get(), _size, cudaMemcpyDeviceToDevice);
+			_ptr.reset();
+			_ptr = std::move(tmp_ptr);
+			_size += size;
+		}
+
+		void assure(size_t size)
+		{
+			if (size > _size)
+			{
+				_ptr.reset();
+				_ptr = CU::allocMemory(size);
+				_size = size;
+			}
+		}
+		void reset(size_t size = 0)
+		{
+			_ptr.reset();
+			_size = 0;
+			assure(size);
 		}
 	};
-	
-	using unique_ptr = unique_handle<CUdeviceptr, 0ULL, MemFreeDeleter>;
-	
-	
-	struct pitched_memory
-	{
-		pitched_memory(const pitched_memory&) = delete;
-		pitched_memory& operator =(const pitched_memory&) = delete;
-		
-		unique_ptr memory;
-		std::size_t pitch;
-		
-		pitched_memory() {}
-		
-		pitched_memory(unique_ptr memory, std::size_t pitch)
-			: memory(std::move(memory)),
-			  pitch(pitch)
-		{
-		}
-		
-		pitched_memory(pitched_memory&& m)
-			: memory(std::move(m.memory)),
-			  pitch(m.pitch)
-		{
-		}
-		
-		pitched_memory& operator =(pitched_memory&& m)
-		{
-			using std::swap;
-			swap(memory, m.memory);
-			pitch = m.pitch;
-			return *this;
-		}
-	};
-	
-	
-	unique_ptr allocMemory(std::size_t size);
-	unique_ptr allocMemoryPitched(std::size_t& pitch, std::size_t row_size, std::size_t num_rows, unsigned int element_size);
-	pitched_memory allocMemoryPitched(std::size_t row_size, std::size_t num_rows, unsigned int element_size);
 }
-
-#endif  // INCLUDED_CUDA_MEMORY

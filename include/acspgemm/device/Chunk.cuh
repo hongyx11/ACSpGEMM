@@ -39,7 +39,7 @@
 */
 
 #pragma once
-#include "common.h"
+#include "acspgemm/common.h"
 
 using ChunkSortType = uint32_t;
 const int chunk_member_offset = alignment(sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(ChunkSortType), 8);

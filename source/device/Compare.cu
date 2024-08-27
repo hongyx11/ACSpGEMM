@@ -43,8 +43,8 @@
 #include <stdint.h>
 
 // Local includes
-#include "Compare.h"
-#include "common.h"
+#include "acspgemm/Compare.h"
+#include "acspgemm/common.h"
 
 //#define VERIFICATION_TEXT
 
@@ -106,7 +106,7 @@ namespace ACSpGEMM {
 		cudaMalloc(&verification, sizeof(uint32_t));
 		cudaMemset(verification, 0, sizeof(uint32_t));
 
-		d_compare<DataType> << <gridSize, blockSize >> > (reference_mat.rows, reference_mat.cols,
+		d_compare<DataType> <<<gridSize, blockSize >>> (reference_mat.rows, reference_mat.cols,
 			reference_mat.row_offsets, reference_mat.col_ids, reference_mat.data,
 			compare_mat.row_offsets, compare_mat.col_ids, compare_mat.data,
 			compare_data, epsilon, verification);

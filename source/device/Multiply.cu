@@ -53,19 +53,19 @@
 #endif
 
 // Local includes
-#include "Multiply.h"
-#include "device/MultiplyKernels.h"
-#include "device/consistent_gpu_memory.h"
-#include "devicetools/stream.h"
-#include "meta_utils.h"
-#include "device/acSpGEMM_DetermineBlockStarts.cuh"
-#include "device/acSpGEMM_SpGEMM.cuh"
-#include "device/acSpGEMM_MergeSimple.cuh"
-#include "device/acSpGEMM_MergeMaxChunks.cuh"
-#include "device/acSpGEMM_MergeGeneralized.cuh"
-#include "device/acSpGEMM_ChunksToCSR.cuh"
-#include "device/HelperFunctions.cuh"
-#include "CustomExceptions.h"
+#include "acspgemm/Multiply.h"
+#include "acspgemm/device/MultiplyKernels.h"
+#include "acspgemm/device/consistent_gpu_memory.h"
+#include "acspgemm/devicetools/stream.h"
+#include "acspgemm/meta_utils.h"
+#include "acspgemm/device/acSpGEMM_DetermineBlockStarts.cuh"
+#include "acspgemm/device/acSpGEMM_SpGEMM.cuh"
+#include "acspgemm/device/acSpGEMM_MergeSimple.cuh"
+#include "acspgemm/device/acSpGEMM_MergeMaxChunks.cuh"
+#include "acspgemm/device/acSpGEMM_MergeGeneralized.cuh"
+#include "acspgemm/device/acSpGEMM_ChunksToCSR.cuh"
+#include "acspgemm/device/HelperFunctions.cuh"
+#include "acspgemm/CustomExceptions.h"
 
 void startTimer(cudaEvent_t& start, CUstream stream = 0)
 {

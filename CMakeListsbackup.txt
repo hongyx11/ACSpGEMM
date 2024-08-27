@@ -1,0 +1,408 @@
+cmake_minimum_required(VERSION 3.27)
+project(acSpGEMM LANGUAGES CXX CUDA)
+
+set(CMAKE_CUDA_ARCHITECTURES 80)
+find_package(CUDAToolkit REQUIRED)
+# Set CUDA Include path on Linux
+# include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+
+
+# Choose for which CC to build and if to enable Debug
+# option(CUDA_BUILD_CC50 "Build with compute capability 5.0 support" FALSE)
+# option(CUDA_BUILD_CC52 "Build with compute capability 5.2 support" FALSE)
+# option(CUDA_BUILD_CC60 "Build with compute capability 6.0 support" FALSE)
+# option(CUDA_BUILD_CC61 "Build with compute capability 6.1 support" FALSE)
+# option(CUDA_BUILD_CC70 "Build with compute capability 7.0 support" FALSE)
+option(CUDA_BUILD_CC80 "Build with compute capability 8.0 support" TRUE)
+
+
+option(CUDA_BUILD_INFO "Build with kernel statistics and line numbers" FALSE)
+option(CUDA_BUILD_DEBUG "Build with kernel debug" FALSE)
+
+
+# disable old setting
+# # CUDA Flags
+# if (CUDA_BUILD_CC50)
+# 	string(APPEND CMAKE_CUDA_FLAGS " -gencode=arch=compute_50,code=sm_50")
+# endif ()
+# if (CUDA_BUILD_CC52)
+# 	string(APPEND CMAKE_CUDA_FLAGS " -gencode=arch=compute_52,code=sm_52")
+# endif ()
+# if (CUDA_BUILD_CC60)
+# 	string(APPEND CMAKE_CUDA_FLAGS " -gencode=arch=compute_60,code=sm_60")
+# endif ()
+# if (CUDA_BUILD_CC61)
+# 	string(APPEND CMAKE_CUDA_FLAGS " -gencode=arch=compute_61,code=sm_61")
+# endif ()
+# if (CUDA_BUILD_CC70)
+# 	string(APPEND CMAKE_CUDA_FLAGS " -gencode=arch=compute_70,code=sm_70")
+# endif ()
+# if (CUDA_BUILD_CC80)
+# 	string(APPEND CMAKE_CUDA_FLAGS " -gencode=arch=compute_80,code=sm_80")
+# endif ()
+
+string(APPEND CMAKE_CUDA_FLAGS " -std=c++17 -Xcompiler -Wall -D_FORCE_INLINES -DVERBOSE --expt-extended-lambda -use_fast_math --expt-relaxed-constexpr")
+
+if (CUDA_BUILD_INFO)
+	string(APPEND CMAKE_CUDA_FLAGS " -keep --ptxas-options=-v -lineinfo")
+endif ()
+
+if (CUDA_BUILD_DEBUG)
+	string(APPEND CMAKE_CUDA_FLAGS " -G")
+endif ()
+
+# # CXX Flags
+# if(WIN32)
+# set(CUDA_PROPAGATE_HOST_FLAGS ON)
+# if(MSVC)
+#   string(APPEND CMAKE_CXX_FLAGS "/wd4464 /wd4514 /wd4820 /wd4668 /wd4574 /wd4571 /wd4324 /wd4710 /wd4711 /wd4365 /wd4515 /wd4201 /wd4267 /wd5027 /wd4626")
+# endif()
+# else()
+# set(GCC_COVERAGE_LINK_FLAGS  "-lstdc++fs")
+# string(APPEND CMAKE_CXX_FLAGS "-std=c++14 -mlzcnt -Wno-unknown-pragmas")
+# endif()
+
+
+set(ACSPGEMMHEADERS
+	include/common.cuh 
+	include/common.h 
+	include/Compare.h 
+	include/consistent_memory.h 
+	include/COO.h 
+	include/CSR.h 
+	include/CustomExceptions.h 
+	include/dCSR.h 
+	include/default_scheduling_traits.h 
+	include/dVector.h 
+	include/execution_stats.h 
+	include/memory_space.h 
+	include/MergeCaseOffsets.h 
+	include/meta_utils.h 
+	include/multi_arch_build.h 
+	include/Multiply.h 
+	include/Transpose.h 
+	include/Vector.h
+	include/device/acSpGEMM_ChunksToCSR.cuh 
+	include/device/acSpGEMM_DetermineBlockStarts.cuh 
+	include/device/acSpGEMM_MergeGeneralized.cuh 
+	include/device/acSpGEMM_MergeMaxChunks.cuh 
+	include/device/acSpGEMM_MergeSimple.cuh 
+	include/device/acSpGEMM_SpGEMM.cuh 
+	include/device/ARowStorage.cuh 
+	include/device/Chunk.cuh 
+	include/device/consistent_gpu_memory.h 
+	include/device/HelperFunctions.cuh 
+	include/device/MultiplyKernels.h
+	include/device/SortAndCombine.cuh 
+	include/device/WorkDistribution.cuh 
+	include/devicetools/consistent_memory.h
+	include/devicetools/error.h 
+	include/devicetools/event.h
+	include/devicetools/memory.h
+	include/devicetools/memory_space.h
+	include/devicetools/stream.h 
+	include/devicetools/unique_handle.h
+)
+
+
+# AcSpGEMM Library
+add_library(acSpGEMM
+				source/device/Transpose.cu
+				source/device/memory.cpp
+				source/device/Compare.cu
+				source/COO.cpp
+				source/CSR.cpp
+				source/dCSR.cpp
+				source/device/Multiply.cu
+				${ACSPGEMMHEADERS}
+)
+
+target_include_directories(acSpGEMM PUBLIC include)
+target_include_directories(acSpGEMM PUBLIC include/external)
+target_include_directories(acSpGEMM PUBLIC externals)
+
+# # Comparison implementations for cuSparse
+set(COMP_SOURCES "externals/cusparse12/source/cuSparseMultiply.cu")
+
+add_library(comp_implementations ${COMP_SOURCES})
+
+target_include_directories(comp_implementations PUBLIC include)
+target_include_directories(comp_implementations PUBLIC include/external)
+target_include_directories(comp_implementations PUBLIC externals)
+
+# Executable to run a single test
+add_executable(HostTest source/main.cpp)
+
+# Executable to perform a complete testrun
+# add_executable(performTestCase source/performTestCase.cpp)
+
+# Executable to test bit stability
+# add_executable(checkBitStability source/checkBitStability.cpp)
+
+# if(WIN32)
+# set_property(TARGET performTestCase PROPERTY CXX_STANDARD 17)
+# set_property(TARGET checkBitStability PROPERTY CXX_STANDARD 17)
+# endif()
+
+# Link Libraries
+target_link_libraries(HostTest PUBLIC acSpGEMM comp_implementations CUDA::cusparse CUDA::cudart CUDA::cublas )
+# target_link_libraries(performTestCase PUBLIC acSpGEMM comp_implementations CUDA::cusparse CUDA::cudart CUDA::cublas )
+# target_link_libraries(checkBitStability PUBLIC acSpGEMM comp_implementations CUDA::cusparse CUDA::cudart CUDA::cublas )
+
+
+# find_package(MPI REQUIRED)
+
+# # find_package(NVSHMEM REQUIRED HINTS $ENV{NVSHMEM_PREFIX}/lib/cmake/nvshmem)
+# # add_library(nvshmem ALIAS nvshmem::nvshmem)
+# # add_library(nvshmem_host ALIAS nvshmem::nvshmem_host)
+# # add_library(nvshmem_device ALIAS nvshmem::nvshmem_device)
+
+# # if(NVSHMEM_MPI_SUPPORT)
+# # message(STATUS "MPI SUPPORT")
+# #     find_package(MPI REQUIRED)
+# # endif()
+
+# # if(NVSHMEM_SHMEM_SUPPORT)
+# # message(STATUS "SHMEM SUPPORT")
+# #     find_library(
+# #     SHMEM_LIB
+# #     NAMES oshmem
+# #     HINTS ${SHMEM_HOME}
+# #     PATH_SUFFIXES lib lib64)
+# #     find_path(SHMEM_INCLUDE NAME shmem.h HINTS ${SHMEM_HOME}
+# #             PATH_SUFFIXES include
+# #     )
+# #   add_library(shmem IMPORTED INTERFACE)
+# #   target_link_libraries(shmem INTERFACE ${SHMEM_LIB})
+# #   target_include_directories(shmem INTERFACE ${SHMEM_INCLUDE})
+# #   if(NVSHMEM_MPI_SUPPORT)
+# #     separate_arguments(SHMEM_C_LINK_FLAGS NATIVE_COMMAND "${MPI_C_LINK_FLAGS}")
+# #     target_link_options(shmem INTERFACE ${SHMEM_C_LINK_FLAGS})
+# #     target_compile_definitions(shmem INTERFACE ${MPI_C_COMPILE_DEFINITIONS})
+# #     target_compile_options(shmem INTERFACE ${MPI_C_COMPILE_OPTIONS})
+# #   endif()
+# # endif()
+
+
+
+# ##########################################################################################
+# #       CMake settings
+# ##########################################################################################
+
+# # in source build warning
+# if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
+#     set(MSG "")
+#     message(STATUS "Warning! Building from the source directory is not recommended")
+#     message(STATUS "If unintented, please remove 'CMakeCache.txt' and 'CMakeFiles'")
+#     message(STATUS "and build from a separate directory")
+#     message(WARNING "In-source build")
+# endif()
+
+# # set cmake module path
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/external/")
+
+# # set these as the defaults
+# set(CMAKE_ENABLE_EXPORTS ON CACHE BOOL "Executable exports symbols for loadable modules")
+# set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON CACHE BOOL "Append directories in the linker search path")
+
+# # Set a default build type if none was specified
+# set(EMR_BUILD_TYPE "RelWithDebInfo")
+
+# # set the build type
+# if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+#     message(STATUS "Setting build type to '${EMR_BUILD_TYPE}' as none was specified.")
+#     set(CMAKE_BUILD_TYPE "${EMR_BUILD_TYPE}" CACHE
+#       STRING "Choose the type of build." FORCE)
+#     # Set the possible values of build type for cmake-gui
+#     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+#         "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+# endif()
+
+# ##########################################################################################
+# #       GCC version check
+# ##########################################################################################
+# set(GCC_EXPECTED_VERSION 11.2)
+
+# if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS GCC_EXPECTED_VERSION)
+#     message(FATAL_ERROR "GCC: GCB requires GCC v${GCC_EXPECTED_VERSION} or higher to build but found v${CMAKE_CXX_COMPILER_VERSION}")
+# endif()
+
+# ##########################################################################################
+# #       CXX standard
+# ##########################################################################################
+# set(CXX_STANDARD_REQUIRED ON)
+
+# # required minimum CXX standard
+# set(CMAKE_CXX_STANDARD_REQUIRED 17)
+
+# if(NOT CMAKE_CXX_STANDARD OR (CMAKE_CXX_STANDARD LESS ${CMAKE_CXX_STANDARD_REQUIRED}))
+#     set(CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD_REQUIRED})
+#     message(STATUS "Setting CXX_STANDARD to ${CMAKE_CXX_STANDARD_REQUIRED}")
+#     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CMAKE_CXX_STANDARD}")
+# endif()
+
+# ##########################################################################################
+# #       Check and set CMAKE_CUDA_HOST_COMPILER
+# ##########################################################################################
+# if(NOT DEFINED CMAKE_CUDA_HOST_COMPILER)
+#     message(STATUS "CMAKE_CUDA_HOST_COMPILER not provided\n=> Setting CMAKE_CUDA_HOST_COMPILER=$(which CC)")
+
+#     # run which CC to find the CUDA_HOST_COMPILER
+#     execute_process(
+#         COMMAND bash -c "which CC"
+#         OUTPUT_VARIABLE CUDA_HOST_COMPILER)
+
+#     # strip the last \n from the string
+#     string(STRIP ${CUDA_HOST_COMPILER} CUDA_HOST_COMPILER)
+
+#     # check for empty string
+#     if (NOT CUDA_HOST_COMPILER STREQUAL "")
+#         # set the CMAKE_CUDA_HOST_COMPILER and cache it for future use
+#         set(CMAKE_CUDA_HOST_COMPILER ${CUDA_HOST_COMPILER} CACHE STRING "CUDA_HOST_COMPILER" FORCE)
+#         message(STATUS "Setting CMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}")
+#     else()
+#         message(FATAL_ERROR "CMAKE_CUDA_HOST_COMPILER not found. Please set it manually to CC or provide via CMAKE_CUDA_HOST_COMPILER")
+#     endif()
+
+# endif()
+
+# ##########################################################################################
+# #       OpenMP
+# ##########################################################################################
+# find_package(OpenMP REQUIRED)
+
+# if(OpenMP_FOUND)
+#     list(APPEND _OMP OpenMP::OpenMP_CXX)
+#     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+#     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+#     set (CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${OpenMP_CUDA_FLAGS}")
+#     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+
+# endif()
+
+# ##########################################################################################
+# #       NVSHMEM settings
+# ##########################################################################################
+# option(USE_NVSHMEM "Enable NVSHMEM.." ON)
+
+# if (DEFINED ENV{NVSHMEM_MPI_SUPPORT})
+#     set(NVSHMEM_MPI_SUPPORT_DEFAULT $ENV{NVSHMEM_MPI_SUPPORT})
+# else()
+#     set(NVSHMEM_MPI_SUPPORT_DEFAULT ON)
+# endif()
+
+# set(NVSHMEM_PREFIX $ENV{NVSHMEM_PREFIX} CACHE PATH "path to NVSHMEM install directory.")
+# set(CUDA_HOME $ENV{CUDA_HOME} CACHE PATH "path to CUDA installation")
+# set(MPI_HOME $ENV{MPI_HOME} CACHE PATH "path to MPI installation")
+# set(SHMEM_HOME ${MPI_HOME} CACHE PATH "path to SHMEM installation")
+# set(CUDA_ARCHITECTURES $ENV{CUDA_ARCHITECTURES} CACHE PATH "CUDA architectures to build for")
+
+# option(NVSHMEM_MPI_SUPPORT "Enable compilation of the MPI bootstrap and MPI-specific code" ${NVSHMEM_MPI_SUPPORT_DEFAULT})
+# option(NVSHMEM_SHMEM_SUPPORT "Enable Compilation of the SHMEM bootstrap and SHMEM specific code" $ENV{NVSHMEM_SHMEM_SUPPORT})
+# option(NVSHMEM_VERBOSE "Enable the ptxas verbose compilation option" OFF)
+# set(USE_MVSHMEM ON)
+# message(STATUS ${USE_MVSHMEM})
+
+# if (USE_NVSHMEM)
+#     message(STATUS "USING SHMEM")
+#     find_package(NVSHMEM REQUIRED HINTS ${NVSHMEM_PREFIX}/lib/cmake/nvshmem)
+# endif()
+
+# ##########################################################################################
+# #       Setup CUDA and MPI for aliases
+# ##########################################################################################
+# if (USE_NVSHMEM)
+#     find_package(CUDAToolkit REQUIRED)
+# endif()
+# find_package(MPI REQUIRED)
+
+# # set this variable
+# set(CMAKE_CUDA_ARCHITECTURES 80)
+
+# ##########################################################################################
+# #       SHMEM support
+# ##########################################################################################
+
+# if(NVSHMEM_SHMEM_SUPPORT)
+# message(STATUS "mvshmme SHMEM support")
+#     find_library(
+#       SHMEM_LIB
+#       NAMES oshmem
+#       HINTS ${SHMEM_HOME}
+#       PATH_SUFFIXES lib lib64)
+
+#     find_path(SHMEM_INCLUDE NAME shmem.h HINTS ${SHMEM_HOME}
+#               PATH_SUFFIXES include)
+
+#     add_library(shmem IMPORTED INTERFACE)
+#     target_link_libraries(shmem INTERFACE ${SHMEM_LIB})
+#     target_include_directories(shmem INTERFACE ${SHMEM_INCLUDE})
+
+#     if(NVSHMEM_MPI_SUPPORT)
+#           separate_arguments(SHMEM_C_LINK_FLAGS NATIVE_COMMAND "${MPI_C_LINK_FLAGS}")
+#           target_link_options(shmem INTERFACE ${SHMEM_C_LINK_FLAGS})
+#           target_compile_definitions(shmem INTERFACE ${MPI_C_COMPILE_DEFINITIONS})
+#           target_compile_options(shmem INTERFACE ${MPI_C_COMPILE_OPTIONS})
+#     endif()
+# endif()
+
+# ##########################################################################################
+# #       Configure Header files
+# ##########################################################################################
+# message(STATUS "Configuring...")
+
+# # configure the file: config.hpp
+# # configure_file(${PROJECT_SOURCE_DIR}/cmake/Templates/config.hpp.in config.hpp @ONLY)
+
+# # install the configured file as well
+# # install(FILES ${CMAKE_BINARY_DIR}/config.hpp DESTINATION include)
+
+# ##########################################################################################
+# #       Add sub-directories
+# ##########################################################################################
+
+# #----------------------------------------------------------------------------------------#
+# #   externals
+# #----------------------------------------------------------------------------------------#
+
+# #message(STATUS "Adding external...")
+# #add_subdirectory(external)
+
+# #----------------------------------------------------------------------------------------#
+# #   ex-msg-roofline source
+# #----------------------------------------------------------------------------------------#
+
+# # message(STATUS "Adding ex-msg-roofline apps...")
+# # add_subdirectory(apps)
+
+
+# # check appropriate cuda compiler flags before building nvshmem apps
+# include(CheckCompilerFlag)
+# check_compiler_flag(CUDA -t4 NVCC_THREADS)
+
+# add_library(nvshmem ALIAS nvshmem::nvshmem)
+# add_library(nvshmem_host ALIAS nvshmem::nvshmem_host)
+# add_library(nvshmem_device ALIAS nvshmem::nvshmem_device)
+
+# # add an interface of libraries to link with tagets
+# add_library(nvshmem_helper INTERFACE)
+# target_link_libraries(nvshmem_helper INTERFACE CUDA::cudart CUDA::cuda_driver nvidia-ml cuda nvshmem_host nvrtc)
+
+# # add -lnvshmem static or dynamic libraries based on build configuration
+# if(NVSHMEM_TEST_STATIC_LIB)
+#     target_link_libraries(nvshmem_helper INTERFACE nvshmem)
+# else()
+#     target_link_libraries(nvshmem_helper INTERFACE nvshmem_host nvshmem_device)
+# endif()
+
+# # set appropriate c++ and cuda standards
+# target_compile_features(nvshmem_helper INTERFACE cxx_std_17 cuda_std_11)
+
+# # add OpenSHMEM libraries if needed
+# if(NVSHMEM_SHMEM_SUPPORT)
+#     target_link_libraries(nvshmem_helper INTERFACE shmem)
+#     target_compile_definitions(nvshmem_helper INTERFACE NVSHMEMTEST_SHMEM_SUPPORT)
+# endif()
+
+# add_executable(nvmemtest source/mainnvshmem.cu)
+# target_link_libraries(nvmemtest PUBLIC nvshmem_helper MPI::MPI_CXX)

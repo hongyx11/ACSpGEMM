@@ -104,13 +104,40 @@ This expanding template will instantiate variants of `MultiplyCall` with the par
 # FAQ
 For any questions please directly contact Martin Winter <martin.winter@icg.tugraz.at>
 
-
-
 # NERSC
 
 how to benchmark the ACSpGEMM on NERSC.
+## remove build directory
+```
+rm -rf /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build
+```
+
+## Cmake Configuration 
 ```
 module load nvshmem
-cmake -DCMAKE_C_COMPILER=cc -DCMAKE_CXX_COMPILER=CC .. 
+cmake -DCMAKE_C_COMPILER=cc -DCMAKE_CXX_COMPILER=CC \
+-S/pscratch/sd/y/yuxihong/spkernels/ACSpGEMM \
+-B/pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build \
+-DCMAKE_INSTALL_PREFIX=/pscratch/sd/y/yuxihong/spkernels/install 
 ```
+
+## Cmake build 
+```
+cmake --build /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build -- -j
+```
+
+## Cmake install 
+```
+cmake --install /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build
+```
+
+## Build & Install in single command
+```
+cmake --build /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build -- -j && \
+cmake --install /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build
+```
+
+
 avoid wrong compiler issues.
+
+

@@ -40,8 +40,8 @@
 
 #pragma once
 
-#include "device/MultiplyKernels.h"
-#include "common.h"
+#include "acspgemm/device/MultiplyKernels.h"
+#include "acspgemm/common.h"
 
 
 template<typename OFFSET_TYPE, uint32_t NNZ_PER_BLOCK>

@@ -49,11 +49,11 @@
 #include <algorithm>
 
 #include <stdint.h>
-#include "meta_utils.h"
-#include "devicetools/event.h"
-#include "MergeCaseOffsets.h"
-#include "MultiplyKernels.h"
-#include "Chunk.cuh"
+#include "acspgemm/meta_utils.h"
+#include "acspgemm/devicetools/event.h"
+#include "acspgemm/MergeCaseOffsets.h"
+#include "acspgemm/device/MultiplyKernels.h"
+#include "acspgemm/device/Chunk.cuh"
 namespace
 {
 	template <

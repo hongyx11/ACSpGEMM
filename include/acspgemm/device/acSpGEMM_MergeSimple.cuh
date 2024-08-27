@@ -40,7 +40,7 @@
 
 #pragma once
 
-#include "device/MultiplyKernels.h"
+#include "acspgemm/device/MultiplyKernels.h"
 
 // #########################################################################################
 //

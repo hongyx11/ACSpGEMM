@@ -41,8 +41,8 @@
 #pragma once
 
 // Local includes
-#include "device/MultiplyKernels.h"
-#include "meta_utils.h"
+#include "acspgemm/device/MultiplyKernels.h"
+#include "acspgemm/meta_utils.h"
 
 #define DIVISION_FACTOR 2
 

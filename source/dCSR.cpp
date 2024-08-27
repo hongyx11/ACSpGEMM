@@ -29,8 +29,8 @@
 //  THE SOFTWARE.
 //
 
-#include "dCSR.h"
-#include "CSR.h"
+#include "acspgemm/dCSR.h"
+#include "acspgemm/CSR.h"
 
 #include <cuda_runtime.h>
 

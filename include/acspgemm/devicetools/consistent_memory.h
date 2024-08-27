@@ -35,7 +35,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <numeric>
-#include "devicetools/memory_space.h"
+#include "acspgemm/devicetools/memory_space.h"
 
 namespace HiSparse
 {

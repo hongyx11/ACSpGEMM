@@ -41,8 +41,8 @@
 #pragma once
 
 
-#include "HelperFunctions.cuh"
-#include "meta_utils.h"
+#include "acspgemm/device/HelperFunctions.cuh"
+#include "acspgemm/meta_utils.h"
 
 
 template<typename INDEX_TYPE, uint32_t NNZ_PER_BLOCK, uint32_t THREADS, bool ENCODING>

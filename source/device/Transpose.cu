@@ -41,11 +41,11 @@
 // Global includes
 #include <thrust/device_vector.h>
 #include <stdint.h>
-#include "device_launch_parameters.h"
+#include "acspgemm/device_launch_parameters.h"
 
 // Local includes
-#include "Transpose.h"
-#include "common.h"
+#include "acspgemm/Transpose.h"
+#include "acspgemm/common.h"
 
 __global__ void d_calulateTransposeDistribution(int in_rows, int in_cols,
 	const uint32_t* __restrict input_offset, const uint32_t* __restrict input_indices, uint32_t* output_offset)

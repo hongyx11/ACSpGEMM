@@ -41,10 +41,11 @@
 #pragma once
 
 #include <cub/cub.cuh>
-#include "Chunk.cuh"
-#include "SortAndCombine.cuh"
-#include "WorkDistribution.cuh"
-#include "device/MultiplyKernels.h"
+#include "acspgemm/device/MultiplyKernels.h"
+#include "acspgemm/device/Chunk.cuh"
+#include "acspgemm/device/SortAndCombine.cuh"
+#include "acspgemm/device/WorkDistribution.cuh"
+
 
 #define ELEMENT_TO_SEARCH 10198
 
