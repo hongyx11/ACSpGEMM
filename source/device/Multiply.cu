@@ -67,6 +67,19 @@
 #include "acspgemm/device/HelperFunctions.cuh"
 #include "acspgemm/CustomExceptions.h"
 
+
+static void HandleError( cudaError_t err,
+                         const char *file,
+                         int line ) {
+    if (err != cudaSuccess) {
+        printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
+                file, line );
+		  throw std::exception();
+    }
+}
+#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
+
+
 void startTimer(cudaEvent_t& start, CUstream stream = 0)
 {
 	HANDLE_ERROR(cudaEventRecord(start, stream));
@@ -81,8 +94,8 @@ float recordTimer(cudaEvent_t& start, cudaEvent_t& end, CUstream stream = 0)
 	return time;
 }
 
-using IndexType = uint32_t;
-using OffsetType = uint32_t;
+// using IndexType = uint32_t;
+// using OffsetType = uint32_t;
 
 
 namespace ACSpGEMM {
@@ -99,9 +112,26 @@ namespace ACSpGEMM {
         return divup<T>(size, alignment) * alignment;
     }
 
-    template <typename DataType, uint32_t threads, uint32_t blocks_per_mp, uint32_t nnz_per_thread, uint32_t input_elements_per_thread, uint32_t retain_elements_per_thread, uint32_t merge_max_chunks, uint32_t generalized_merge_max_path_options, uint32_t merge_max_path_options, bool DEBUG_MODE>
-    void MultiplyImplementation(const dCSR<DataType>& matA, const dCSR<DataType>& matB, dCSR<DataType>& matOut, const GPUMatrixMatrixMultiplyTraits& traits, ExecutionStats& stats)
+    template <
+    typename IndexType,
+    typename DataType, 
+    uint32_t threads, 
+    uint32_t blocks_per_mp, 
+    uint32_t nnz_per_thread, 
+    uint32_t input_elements_per_thread, 
+    uint32_t retain_elements_per_thread, 
+    uint32_t merge_max_chunks, 
+    uint32_t generalized_merge_max_path_options, 
+    uint32_t merge_max_path_options, 
+    bool DEBUG_MODE>
+    void MultiplyImplementation(
+        const spformat::dCSR<IndexType, DataType>& matA, 
+        const spformat::dCSR<IndexType, DataType>& matB, 
+        spformat::dCSR<IndexType, DataType>& matOut, 
+        const GPUMatrixMatrixMultiplyTraits& traits, 
+        ExecutionStats& stats)
     {
+        using OffsetType = IndexType;
         using ConsistentGPUMemory = ConsistentMemory<MemorySpace::device>;
         
         // the magic numbers to make it run smoother
@@ -141,10 +171,10 @@ namespace ACSpGEMM {
         AcSpGEMMKernels spgemm(threads);
 
         // Matrix information
-        size_t Arows = matA.rows;
-        size_t Acols = matA.cols;
-        size_t Brows = matB.rows;
-        size_t Bcols = matB.cols;
+        size_t Arows = matA.nrows_;
+        size_t Acols = matA.ncols_;
+        size_t Brows = matB.nrows_;
+        size_t Bcols = matB.ncols_;
         size_t Crows = Arows;
         size_t Ccols = Bcols;
 
@@ -152,8 +182,8 @@ namespace ACSpGEMM {
             throw std::runtime_error("Unable to multiply matrix with matrix - invalid dimensions");
 
         // Matrix Output estimation
-        double a_avg_row = matA.nnz / static_cast<double>(Arows);
-        double b_avg_row = matB.nnz / static_cast<double>(Brows);
+        double a_avg_row = matA.nnz_ / static_cast<double>(Arows);
+        double b_avg_row = matB.nnz_ / static_cast<double>(Brows);
         double avg_row_overlap = b_avg_row / Bcols;
         // note geometric sequence
         double output_estimate = OverallocationFactor*Arows*b_avg_row * (1.0 - pow(1.0 - avg_row_overlap, a_avg_row)) / (avg_row_overlap);
@@ -180,7 +210,7 @@ namespace ACSpGEMM {
             size_to_allocate = upper_limit;
         if(DEBUG_MODE)
         {
-            std::cout << "A: " << Arows << "x" << Acols << " NNZ: " << matA.nnz << " avg row: " << a_avg_row << "  " << "B: " << Brows << "x" << Bcols << " NNZ: " << matB.nnz << " avg row: " << b_avg_row << "\n";
+            std::cout << "A: " << Arows << "x" << Acols << " NNZ: " << matA.nnz_ << " avg row: " << a_avg_row << "  " << "B: " << Brows << "x" << Bcols << " NNZ: " << matB.nnz_ << " avg row: " << b_avg_row << "\n";
             std::cout << "expected row overlap: " << avg_row_overlap << " overallocation: " << OverallocationFactor << "\n";
             std::cout << "expected nnz: " << static_cast<size_t>(round(output_estimate)) << " expected temp: " << static_cast<size_t>(round(intermediate_estimate)) << " mem alloc: " << expectedNNZ << "\n";
             std::cout << "mergepointer alloc " << static_cast<size_t>(ChunkPointerOverestimationFactor*mergepointer_estimate) << " mergepointer estimate: " << mergepointer_estimate << "\n";
@@ -264,7 +294,7 @@ namespace ACSpGEMM {
         
 
         // Allocate memory for block offsets
-        uint32_t requiredBlocks = divup<uint32_t>(matA.nnz, nnzperblock);
+        uint32_t requiredBlocks = divup<uint32_t>(matA.nnz_, nnzperblock);
 
         // Allocate memory for chunk and shared row tracker
         if (outputRowInfoSize < Crows)
@@ -313,7 +343,7 @@ namespace ACSpGEMM {
 
         // Allocate memory for offsets
         CU::unique_ptr newmat_offsets;
-        if (matOut.rows != Crows)
+        if (matOut.nrows_ != Crows)
         {
             newmat_offsets = CU::allocMemory((Crows + 1) * sizeof(OffsetType));
             memory_usage_in_Bytes += (Crows + 1) * sizeof(OffsetType);
@@ -378,7 +408,7 @@ namespace ACSpGEMM {
                     spgemm.h_computeSpgemmPart<nnz_per_thread, threads, blocks_per_mp, input_elements_per_thread, retain_elements_per_thread, merge_max_path_options, DataType, DataType, DataType, IndexType, OffsetType, 0>(
                         matA.data, matA.col_ids, matA.row_offsets,
                         matB.data, matB.col_ids, matB.row_offsets,
-                        blockStarts, matA.nnz, Arows,
+                        blockStarts, matA.nnz_, Arows,
                         tempChunkBuffers[run].get<uint32_t>(), currentChunckAllocation, currentChunckAllocation + 1, tempChunkBufferSizes[run],
                         chunckPointers.get<void*>(), currentCounters, chunkPointerSize,
                         newmat_offsets.get<OffsetType>(), outputRowListHead, outputRowChunkCounter,
@@ -397,7 +427,7 @@ namespace ACSpGEMM {
                     spgemm.h_computeSpgemmPart<nnz_per_thread, threads, blocks_per_mp, input_elements_per_thread, retain_elements_per_thread, merge_max_path_options, DataType, DataType, DataType, IndexType, OffsetType, 1>(
                         matA.data, matA.col_ids, matA.row_offsets,
                         matB.data, matB.col_ids, matB.row_offsets,
-                        blockStarts, matA.nnz, Arows,
+                        blockStarts, matA.nnz_, Arows,
                         tempChunkBuffers[run].get<uint32_t>(), currentChunckAllocation, currentChunckAllocation + 1, tempChunkBufferSizes[run],
                         chunckPointers.get<void*>(), currentCounters, chunkPointerSize,
                         newmat_offsets.get<OffsetType>(), outputRowListHead, outputRowChunkCounter,
@@ -415,7 +445,7 @@ namespace ACSpGEMM {
                     spgemm.h_computeSpgemmPart<nnz_per_thread, threads, blocks_per_mp, input_elements_per_thread, retain_elements_per_thread, merge_max_path_options, DataType, DataType, DataType, IndexType, OffsetType, 2>(
                         matA.data, matA.col_ids, matA.row_offsets,
                         matB.data, matB.col_ids, matB.row_offsets,
-                        blockStarts, matA.nnz, Arows,
+                        blockStarts, matA.nnz_, Arows,
                         tempChunkBuffers[run].get<uint32_t>(), currentChunckAllocation, currentChunckAllocation + 1, tempChunkBufferSizes[run],
                         chunckPointers.get<void*>(), currentCounters, chunkPointerSize,
                         newmat_offsets.get<OffsetType>(), outputRowListHead, outputRowChunkCounter,
@@ -682,10 +712,11 @@ namespace ACSpGEMM {
         offs += sizeof(IndexType) * Crows;
         HANDLE_ERROR(cudaMemcpy(&matrix_elements, reinterpret_cast<void*>(offs), sizeof(IndexType), cudaMemcpyDeviceToHost));
 
-        if (matOut.nnz != matrix_elements)
+        if (matOut.nnz_ != matrix_elements)
         {
             //std::cout << "Reallocation HERE ################" << matOut.nnz << " | " << matrix_elements <<"\n";
-            matOut.alloc(Crows, Ccols, matrix_elements, true);
+            // matOut.alloc(Crows, Ccols, matrix_elements, true);
+            matOut.resize(Crows, Ccols, matrix_elements);
         }
         matOut.row_offsets = std::move(newmat_offsets.getRelease<IndexType>());
 
@@ -719,6 +750,9 @@ namespace ACSpGEMM {
 
         return;
     }
+
+
+
 
     template<class CB, int... OPTIONS>
     struct Selection
@@ -779,34 +813,50 @@ namespace ACSpGEMM {
     };
 
 
-    template<typename DataType>
+    template<
+    typename IndexType,
+    typename DataType>
     struct MultiplyCall
     {
-        const dCSR<DataType>& A;
-        const dCSR<DataType>& B;
-        dCSR<DataType> &matOut;
+        const spformat::dCSR<IndexType,DataType>& A;
+        const spformat::dCSR<IndexType,DataType>& B;
+        spformat::dCSR<IndexType,DataType> &matOut;
         const GPUMatrixMatrixMultiplyTraits& scheduling_traits;
         ExecutionStats& exec_stats;
 
-        MultiplyCall(const dCSR<DataType>& A, const dCSR<DataType>& B, dCSR<DataType>& matOut, const GPUMatrixMatrixMultiplyTraits& scheduling_traits, ExecutionStats& exec_stats) :
-            A(A), B(B), matOut(matOut), scheduling_traits(scheduling_traits), exec_stats(exec_stats)
+        MultiplyCall(
+            const spformat::dCSR<IndexType,DataType>& A, 
+            const spformat::dCSR<IndexType,DataType>& B, 
+            spformat::dCSR<IndexType,DataType>& matOut, 
+            const GPUMatrixMatrixMultiplyTraits& scheduling_traits, 
+            ExecutionStats& exec_stats) :
+            A(A), B(B), matOut(matOut), 
+            scheduling_traits(scheduling_traits), exec_stats(exec_stats)
         {
-
         }
 
-        template<int Threads, int BlocksPerMP, int NNZPerThread, int InputPerThread, int RetainElements, int MaxChunkstoMerge, int MaxChunksGeneralizedMerge, int MergePathOptions, int Debug>
+        template<
+        int Threads, 
+        int BlocksPerMP, 
+        int NNZPerThread, 
+        int InputPerThread, 
+        int RetainElements, 
+        int MaxChunkstoMerge, 
+        int MaxChunksGeneralizedMerge, 
+        int MergePathOptions, 
+        int Debug>
         void call()
         {
             const int RealBlocksPerMP = (256 * BlocksPerMP + Threads - 1) / Threads;
-            ACSpGEMM::MultiplyImplementation<DataType, Threads, RealBlocksPerMP, NNZPerThread, InputPerThread, RetainElements, MaxChunkstoMerge, MaxChunksGeneralizedMerge, MergePathOptions, Debug == 0?false:true>(A, B, matOut, scheduling_traits, exec_stats);
+            ACSpGEMM::MultiplyImplementation<IndexType, DataType, Threads, RealBlocksPerMP, NNZPerThread, InputPerThread, RetainElements, MaxChunkstoMerge, MaxChunksGeneralizedMerge, MergePathOptions, Debug == 0?false:true>(A, B, matOut, scheduling_traits, exec_stats);
         }
     };
 
 
-    template <typename DataType>
-    void Multiply(const dCSR<DataType>& A, const dCSR<DataType>& B, dCSR<DataType>& matOut, const GPUMatrixMatrixMultiplyTraits& scheduling_traits, ExecutionStats& exec_stats, bool Debug_Mode)
+    template <typename IndexType, typename DataType>
+    void Multiply(const spformat::dCSR<IndexType,DataType>& A, const spformat::dCSR<IndexType,DataType>& B, spformat::dCSR<IndexType,DataType>& matOut, const GPUMatrixMatrixMultiplyTraits& scheduling_traits, ExecutionStats& exec_stats, bool Debug_Mode)
     {
-        MultiplyCall<DataType> call(A, B, matOut, scheduling_traits, exec_stats);
+        MultiplyCall<IndexType,DataType> call(A, B, matOut, scheduling_traits, exec_stats);
 
         //Threads, BlocksPerMP, NNZPerTread, InputPerThread, RetainElements, MaxChungsTo Merge, MaxChunGenrel, MergePathoption, Debug
         // bool called = 
@@ -835,7 +885,7 @@ namespace ACSpGEMM {
                                     EnumOption<8, 8, 8, 
                                         EnumOption<0, 0, 1>
                                         >>>>>>>>
-            ::call(Selection<MultiplyCall<DataType>>(call), scheduling_traits.Threads, scheduling_traits.BlocksPerMp, scheduling_traits.NNZPerThread, scheduling_traits.InputElementsPerThreads, scheduling_traits.RetainElementsPerThreads, scheduling_traits.MaxChunksToMerge, scheduling_traits.MaxChunksGeneralizedMerge, scheduling_traits.MergePathOptions, (int)Debug_Mode);
+            ::call(Selection<MultiplyCall<IndexType,DataType>>(call), scheduling_traits.Threads, scheduling_traits.BlocksPerMp, scheduling_traits.NNZPerThread, scheduling_traits.InputElementsPerThreads, scheduling_traits.RetainElementsPerThreads, scheduling_traits.MaxChunksToMerge, scheduling_traits.MaxChunksGeneralizedMerge, scheduling_traits.MergePathOptions, (int)Debug_Mode);
         
         if(!called)
         {
@@ -843,6 +893,19 @@ namespace ACSpGEMM {
         }
     }
 
-    template    void Multiply<float>(const dCSR<float>& A, const dCSR<float>& B, dCSR<float>& matOut, const GPUMatrixMatrixMultiplyTraits& scheduling_traits, ExecutionStats& exec_stats, bool Debug_Mode);
-    template    void Multiply<double>(const dCSR<double>& A, const dCSR<double>& B, dCSR<double>& matOut, const GPUMatrixMatrixMultiplyTraits& scheduling_traits, ExecutionStats& exec_stats, bool Debug_Mode);
+    template void Multiply<uint32_t, float>(
+        const spformat::dCSR<uint32_t,float>& A, 
+        const spformat::dCSR<uint32_t,float>& B, 
+        spformat::dCSR<uint32_t,float>& matOut, 
+        const GPUMatrixMatrixMultiplyTraits& scheduling_traits, 
+        ExecutionStats& exec_stats, 
+        bool Debug_Mode);
+
+    template void Multiply<uint32_t, double>(
+        const spformat::dCSR<uint32_t,double>& A, 
+        const spformat::dCSR<uint32_t,double>& B, 
+        spformat::dCSR<uint32_t,double>& matOut, 
+        const GPUMatrixMatrixMultiplyTraits& scheduling_traits, 
+        ExecutionStats& exec_stats, 
+        bool Debug_Mode);
 }

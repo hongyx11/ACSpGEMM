@@ -48,18 +48,27 @@
 
 //#define VERIFICATION_TEXT
 
-template <typename DataType>
-__global__ void d_compare(int in_rows, int in_cols, const uint32_t* __restrict reference_offset, const uint32_t* __restrict reference_indices, const DataType* __restrict reference_values,
-	const uint32_t* __restrict compare_offset, const uint32_t* __restrict compare_indices, const DataType* __restrict compare_values, bool compare_data, double epsilon, uint32_t* verification)
+template <typename IndexType, typename DataType>
+__global__ void d_compare(
+    int in_rows, 
+    int in_cols, 
+    const IndexType* __restrict reference_offset, 
+    const IndexType* __restrict reference_indices, 
+    const DataType* __restrict reference_values,
+    const IndexType* __restrict compare_offset, 
+    const IndexType* __restrict compare_indices, 
+    const DataType* __restrict compare_values, 
+    bool compare_data, 
+    double epsilon, uint32_t* verification)
 {
-	int tid = threadIdx.x + blockDim.x * blockIdx.x;
-	if (tid >= in_rows)
-		return;
+    int tid = threadIdx.x + blockDim.x * blockIdx.x;
+    if (tid >= in_rows)
+        return;
 
-	uint32_t ref_offset = reference_offset[tid];
-	uint32_t comp_offset = compare_offset[tid];
-	uint32_t ref_number_entries = reference_offset[tid + 1] - ref_offset;
-	uint32_t comp_number_entries = compare_offset[tid + 1] - comp_offset;
+    IndexType ref_offset = reference_offset[tid];
+    IndexType comp_offset = compare_offset[tid];
+    IndexType ref_number_entries = reference_offset[tid + 1] - ref_offset;
+    IndexType comp_number_entries = compare_offset[tid + 1] - comp_offset;
 
 	if (ref_number_entries != comp_number_entries)
 	{
@@ -69,9 +78,9 @@ __global__ void d_compare(int in_rows, int in_cols, const uint32_t* __restrict r
 		*verification = 1;
 	}
 
-	uint32_t num_entries = min(ref_number_entries, comp_number_entries);
+	IndexType num_entries = min(ref_number_entries, comp_number_entries);
 
-	for (uint32_t i = 0; i < num_entries; ++i)
+	for (IndexType i = 0; i < num_entries; ++i)
 	{
 		if (reference_indices[ref_offset + i] != compare_indices[comp_offset + i])
 		{
@@ -96,25 +105,29 @@ __global__ void d_compare(int in_rows, int in_cols, const uint32_t* __restrict r
 }
 
 namespace ACSpGEMM {
-	template <typename DataType>
-	bool Compare(const dCSR<DataType>& reference_mat, const dCSR<DataType>& compare_mat, bool compare_data)
-	{
-		int blockSize(256);
-		int gridSize(divup<int>(reference_mat.rows + 1, blockSize));
-		double epsilon = 0.1;
-		uint32_t* verification, h_verification;
-		cudaMalloc(&verification, sizeof(uint32_t));
-		cudaMemset(verification, 0, sizeof(uint32_t));
 
-		d_compare<DataType> <<<gridSize, blockSize >>> (reference_mat.rows, reference_mat.cols,
-			reference_mat.row_offsets, reference_mat.col_ids, reference_mat.data,
-			compare_mat.row_offsets, compare_mat.col_ids, compare_mat.data,
-			compare_data, epsilon, verification);
-		 
-		cudaMemcpy(&h_verification, verification, sizeof(uint32_t), cudaMemcpyDeviceToHost);
-		return (h_verification == 0);
-	}
+    template <typename IndexType, typename DataType>
+    bool Compare(
+        const spformat::dCSR<IndexType,DataType>& reference_mat, 
+        const spformat::dCSR<IndexType,DataType>& compare_mat, 
+        bool compare_data)
+    {
+        int blockSize(256);
+        int gridSize(divup<int>(reference_mat.nrows_ + 1, blockSize));
+        double epsilon = 0.1;
+        uint32_t* verification, h_verification;
+        cudaMalloc(&verification, sizeof(uint32_t));
+        cudaMemset(verification, 0, sizeof(uint32_t));
 
-	template bool Compare<float>(const dCSR<float>& reference_mat, const dCSR<float>& compare_mat, bool compare_data);
-	template bool Compare<double>(const dCSR<double>& reference_mat, const dCSR<double>& compare_mat, bool compare_data);
+        d_compare<IndexType, DataType> <<<gridSize, blockSize >>> (reference_mat.nrows_, reference_mat.ncols_,
+            reference_mat.row_offsets, reference_mat.col_ids, reference_mat.data,
+            compare_mat.row_offsets, compare_mat.col_ids, compare_mat.data,
+            compare_data, epsilon, verification);
+            
+        cudaMemcpy(&h_verification, verification, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+        return (h_verification == 0);
+    }
+
+	template bool Compare<uint32_t,float>(const spformat::dCSR<uint32_t,float>& reference_mat, const spformat::dCSR<uint32_t,float>& compare_mat, bool compare_data);
+	template bool Compare<uint32_t, double>(const spformat::dCSR<uint32_t,double>& reference_mat, const spformat::dCSR<uint32_t,double>& compare_mat, bool compare_data);
 }

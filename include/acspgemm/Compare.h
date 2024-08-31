@@ -40,9 +40,13 @@
 
 #pragma once
 
-#include "dCSR.h"
+#include <spformat/spformat.hpp>
+
 
 namespace ACSpGEMM {
-	template <typename DataType>
-	bool Compare(const dCSR<DataType>& reference_mat, const dCSR<DataType>& compare_mat, bool compare_data);
+	template <typename IndexType, typename DataType>
+	bool Compare(
+        const spformat::dCSR<IndexType,DataType>& reference_mat, 
+        const spformat::dCSR<IndexType,DataType>& compare_mat, 
+        bool compare_data);
 }

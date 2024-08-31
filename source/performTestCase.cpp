@@ -65,7 +65,7 @@
 #include "acspgemm/dCSR.h"
 #include "acspgemm/dVector.h"
 #include "acspgemm/Multiply.h"
-#include "acspgemm/Transpose.h"
+// #include "acspgemm/Transpose.h"
 #include "acspgemm/Compare.h"
 #include "acspgemm/consistent_memory.h"
 #include "acspgemm/CustomExceptions.h"

@@ -41,21 +41,22 @@
 // Global includes
 #include <fstream>
 #include <iostream>
+#include <spformat/COO.hpp>
 #include <string>
 #include <random>
 #include <algorithm>
 #include <tuple>
 #include <cuda_runtime.h>
 
+#include <spformat/spformat.hpp>
+using namespace spformat;
+
 // Local includes
-#include "acspgemm/CSR.h"
-#include "acspgemm/COO.h"
-#include "acspgemm/Vector.h"
-#include "acspgemm/dCSR.h"
-#include "acspgemm/dVector.h"
 #include "acspgemm/Multiply.h"
-#include "acspgemm/Transpose.h"
 #include "acspgemm/Compare.h"
+
+
+
 
 // CuSparse include
 // #include "cusparse12/include/cuSparseMultiply.h"
@@ -74,7 +75,7 @@
 // #ifndef NOBHSPARSE
 // #include"bhSparse/include/bhSparseMultiply.h"
 // #endif
-
+using IndexType = uint32_t;
 using DataType = float;
 unsigned int padding = 0;
 template<typename T>
@@ -128,42 +129,45 @@ int main(int argc, char *argv[])
     std::cout << "Going to use " << prop.name << " " << prop.major << "." << prop.minor << "\n";
 
     // CSR matrices on the device
-    CSR<DataType> csr_mat, csr_T_mat, result_mat, test_mat;
-    dCSR<DataType> dcsr_mat, dcsr_T_mat, d_result_mat, d_result_mat_comp;//, d_nsparse_result_mat, d_rmerge_result_mat, d_bhSparse_result_mat;
+    CSR<IndexType,DataType> csr_mat, csr_T_mat, result_mat, test_mat;
+    dCSR<IndexType,DataType> dcsr_mat, dcsr_T_mat, d_result_mat, d_result_mat_comp;//, d_nsparse_result_mat, d_rmerge_result_mat, d_bhSparse_result_mat;
 
-    //try load csr file
-    std::string csr_name = std::string(argv[1]) + typeext<DataType>() + ".hicsr";
-    try
-    {
-        std::cout << "trying to load csr file \"" << csr_name << "\"\n";
-        csr_mat = loadCSR<DataType>(csr_name.c_str());
-        std::cout << "succesfully loaded: \"" << csr_name << "\"\n";
-    }
-    catch (std::exception& ex)
-    {
-        std::cout << "could not load csr file:\n\t" << ex.what() << "\n";
-        try
-        {
-            std::cout << "trying to load mtx file \"" << argv[1] << "\"\n";
-            COO<DataType> coo_mat = loadMTX<DataType>(argv[1]);
-            convert(csr_mat, coo_mat);
-            std::cout << "succesfully loaded and converted: \"" << csr_name << "\"\n";
-        }
-        catch (std::exception& ex)
-        {
-            std::cout << ex.what() << std::endl;
-            return -1;
-        }
-        try
-        {
-            std::cout << "write csr file for future use\n";
-            storeCSR(csr_mat, csr_name.c_str());
-        }
-        catch (std::exception& ex)
-        {
-            std::cout << ex.what() << std::endl;
-        }
-    }
+    COO<IndexType,DataType> coo_mat;
+    coo_mat.loadMTX(argv[1]);
+    convert(csr_mat, coo_mat);
+    // //try load csr file
+    // std::string csr_name = std::string(argv[1]) + typeext<DataType>() + ".hicsr";
+    // try
+    // {
+    //     std::cout << "trying to load csr file \"" << csr_name << "\"\n";
+    //     csr_mat = loadCSR<DataType>(csr_name.c_str());
+    //     std::cout << "succesfully loaded: \"" << csr_name << "\"\n";
+    // }
+    // catch (std::exception& ex)
+    // {
+    //     std::cout << "could not load csr file:\n\t" << ex.what() << "\n";
+    //     try
+    //     {
+    //         std::cout << "trying to load mtx file \"" << argv[1] << "\"\n";
+    //         COO<DataType> coo_mat = loadMTX<DataType>(argv[1]);
+    //         convert(csr_mat, coo_mat);
+    //         std::cout << "succesfully loaded and converted: \"" << csr_name << "\"\n";
+    //     }
+    //     catch (std::exception& ex)
+    //     {
+    //         std::cout << ex.what() << std::endl;
+    //         return -1;
+    //     }
+    //     try
+    //     {
+    //         std::cout << "write csr file for future use\n";
+    //         storeCSR(csr_mat, csr_name.c_str());
+    //     }
+    //     catch (std::exception& ex)
+    //     {
+    //         std::cout << ex.what() << std::endl;
+    //     }
+    // }
 
     // Convert host csr to device csr
     convert(dcsr_mat, csr_mat, padding);
@@ -182,9 +186,9 @@ int main(int argc, char *argv[])
 
     bool transpose = false;
 
-    printf("Input Matrix A: (%zu x %zu) - NNZ: %zu\n", dcsr_mat.rows, dcsr_mat.cols, dcsr_mat.nnz);
+    printf("Input Matrix A: (%zu x %zu) - NNZ: %zu\n", dcsr_mat.nrows_, dcsr_mat.ncols_, dcsr_mat.nnz_);
     if(transpose)
-        printf("Input Matrix B: (%zu x %zu) - NNZ: %zu\n", dcsr_T_mat.rows, dcsr_T_mat.cols, dcsr_T_mat.nnz);
+        printf("Input Matrix B: (%zu x %zu) - NNZ: %zu\n", dcsr_T_mat.nrows_, dcsr_T_mat.ncols_, dcsr_T_mat.nnz_);
 
     const int Threads = 256;
     const int BlocksPerMP = 3;
@@ -212,7 +216,7 @@ int main(int argc, char *argv[])
         {
             warmupstats.reset();
             if(testing) std::cerr<<"warmup iter" << i << std::endl;
-            ACSpGEMM::Multiply<DataType>(dcsr_mat, transpose ? dcsr_T_mat : dcsr_mat, d_result_mat_comp, DefaultTraits, warmupstats, Debug_Mode);
+            ACSpGEMM::Multiply<IndexType,DataType>(dcsr_mat, transpose ? dcsr_T_mat : dcsr_mat, d_result_mat_comp, DefaultTraits, warmupstats, Debug_Mode);
         }
 
         // Multiplication
@@ -220,10 +224,10 @@ int main(int argc, char *argv[])
         {
             if (testing) std::cerr << "Iteration: " << i + 1 << "\n";
             std::cerr << "Iteration: " << i + 1 << "\n";
-            ACSpGEMM::Multiply<DataType>(dcsr_mat, transpose ? dcsr_T_mat : dcsr_mat, d_result_mat, DefaultTraits, stats, Debug_Mode);
+            ACSpGEMM::Multiply<IndexType,DataType>(dcsr_mat, transpose ? dcsr_T_mat : dcsr_mat, d_result_mat, DefaultTraits, stats, Debug_Mode);
             if(checkBitStability)
             {
-                if (!ACSpGEMM::Compare<DataType>(d_result_mat_comp, d_result_mat, true))
+                if (!ACSpGEMM::Compare<IndexType,DataType>(d_result_mat_comp, d_result_mat, true))
                 {
                     printf("NOT Bit-Identical\n");
                     printCross();
@@ -254,7 +258,7 @@ int main(int argc, char *argv[])
         return 0;
 
     // cuSparse Multiplication
-    dCSR<DataType> d_cusparse_result_mat;
+    dCSR<IndexType,DataType> d_cusparse_result_mat;
     bool test_data = false;
     uint32_t cusparse_nnz;
     float cusparse_performance = 0.0f;
@@ -281,37 +285,37 @@ int main(int argc, char *argv[])
     std::cout << "Overall Duration (cusparse): " << cusparse_performance / iterations << " ms\n";
     std::cout << "-----------------------------------------------\n";
 
-    if (d_cusparse_result_mat.nnz != d_result_mat.nnz)
+    if (d_cusparse_result_mat.nnz_ != d_result_mat.nnz_)
     {
-        std::cout << "NNZ (cuSparse " << d_cusparse_result_mat.nnz << "|" << d_result_mat.nnz << " ac-SpGEMM) NOT identical!\n";
+        std::cout << "NNZ (cuSparse " << d_cusparse_result_mat.nnz_ << "|" << d_result_mat.nnz_ << " ac-SpGEMM) NOT identical!\n";
         printCross();
     }
-    if (ACSpGEMM::Compare<DataType>(d_cusparse_result_mat, d_result_mat, test_data))
+    if (ACSpGEMM::Compare<IndexType,DataType>(d_cusparse_result_mat, d_result_mat, test_data))
     {
-        printf("(cuSPARSE %zu | ac-SpGEMM %zu) IDENTICAL\n", d_cusparse_result_mat.nnz, d_result_mat.nnz);
+        printf("(cuSPARSE %zu | ac-SpGEMM %zu) IDENTICAL\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_);
         printCheckMark();
     }
     else
     {
-        printf("(cuSPARSE %zu | ac-SpGEMM %zu) NOT IDENTICAL | Missing: %d\n", d_cusparse_result_mat.nnz, d_result_mat.nnz, (int)d_cusparse_result_mat.nnz - (int)d_result_mat.nnz);
+        printf("(cuSPARSE %zu | ac-SpGEMM %zu) NOT IDENTICAL | Missing: %d\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_, (int)d_cusparse_result_mat.nnz_ - (int)d_result_mat.nnz_);
         printCross();
     }
     if (testing)
     {
         // Compare matrices cuSparse / acSpGEMM
-        if (d_cusparse_result_mat.nnz != d_result_mat.nnz)
+        if (d_cusparse_result_mat.nnz_ != d_result_mat.nnz_)
         {
-            std::cout << "NNZ (cuSparse " << d_cusparse_result_mat.nnz << "|" << d_result_mat.nnz << " ac-SpGEMM) NOT identical!\n";
+            std::cout << "NNZ (cuSparse " << d_cusparse_result_mat.nnz_ << "|" << d_result_mat.nnz_ << " ac-SpGEMM) NOT identical!\n";
             printCross();
         }
-        if (ACSpGEMM::Compare<DataType>(d_cusparse_result_mat, d_result_mat, test_data))
+        if (ACSpGEMM::Compare<IndexType,DataType>(d_cusparse_result_mat, d_result_mat, test_data))
         {
-            printf("(cuSPARSE %zu | ac-SpGEMM %zu) IDENTICAL\n", d_cusparse_result_mat.nnz, d_result_mat.nnz);
+            printf("(cuSPARSE %zu | ac-SpGEMM %zu) IDENTICAL\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_);
             printCheckMark();
         }
         else
         {
-            printf("(cuSPARSE %zu | ac-SpGEMM %zu) NOT IDENTICAL | Missing: %d\n", d_cusparse_result_mat.nnz, d_result_mat.nnz, (int)d_cusparse_result_mat.nnz - (int)d_result_mat.nnz);
+            printf("(cuSPARSE %zu | ac-SpGEMM %zu) NOT IDENTICAL | Missing: %d\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_, (int)d_cusparse_result_mat.nnz_ - (int)d_result_mat.nnz_);
             printCross();
         }
 

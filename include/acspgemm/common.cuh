@@ -30,17 +30,19 @@
 //
 
 #pragma once
-#include "common.h"
+
 #include <cuda.h>
 #include <cuda_runtime.h>
+
 #include <cstdint>
 #include <type_traits>
-#include "meta_utils.h"
-
+#include "acspgemm/meta_utils.h"
+#include "acspgemm/common.h"
+#include "acspgemm/device/HelperFunctions.cuh"
 
 /////////////// HELPERS /////////////////////////
 
-const uint32_t WARP_SIZE = 32;
+// const uint32_t WARP_SIZE = 32;
 
 
 
@@ -310,9 +312,9 @@ struct SortDescending
 	}
 };
 
-__device__ __forceinline__ inline uint32_t laneid()
-{
-	uint32_t mylaneid;
-	asm("mov.u32 %0, %laneid;" : "=r" (mylaneid));
-	return mylaneid;
-}
+// __device__ __forceinline__ inline uint32_t laneid()
+// {
+// 	uint32_t mylaneid;
+// 	asm("mov.u32 %0, %laneid;" : "=r" (mylaneid));
+// 	return mylaneid;
+// }

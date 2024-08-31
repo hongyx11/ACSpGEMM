@@ -39,28 +39,49 @@
 */
 #pragma once
 
-#include "dCSR.h"
+// #include "dCSR.h"
+#include <spformat/spformat.hpp>
 #include "execution_stats.h"
 #include "default_scheduling_traits.h"
 #include <cuda.h>
 #include <cuda_runtime.h>
-static void HandleError( cudaError_t err,
-                         const char *file,
-                         int line ) {
-    if (err != cudaSuccess) {
-        printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
-                file, line );
-		  throw std::exception();
-    }
-}
-#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
+
 
 
 namespace ACSpGEMM {
 
-	template <typename DataType>
-	void Multiply(const dCSR<DataType>& A, const dCSR<DataType>& B, dCSR<DataType>& matOut, const GPUMatrixMatrixMultiplyTraits& scheduling_traits, ExecutionStats& exec_stats, bool Debug_Mode = false);
+    template <
+    typename IndexType = uint32_t, 
+    typename DataType
+    >
+    void Multiply(
+        const spformat::dCSR<IndexType, DataType>& A, 
+        const spformat::dCSR<IndexType,DataType>& B, 
+        spformat::dCSR<IndexType,DataType>& matOut, 
+        const GPUMatrixMatrixMultiplyTraits& scheduling_traits, 
+        ExecutionStats& exec_stats, bool Debug_Mode = false);
 
-	template <typename DataType, uint32_t threads, uint32_t blocks_per_mp, uint32_t nnz_per_thread, uint32_t input_elements_per_thread, uint32_t retain_elements_per_thread, uint32_t merge_max_chunks, uint32_t generalized_merge_max_path_options, uint32_t merge_max_path_options, bool DEBUG_MODE=false>
-	void MultiplyImplementation(const dCSR<DataType>& A, const dCSR<DataType>& B, dCSR<DataType>& matOut, const GPUMatrixMatrixMultiplyTraits& scheduling_traits, ExecutionStats& exec_stats);
+    template <
+    typename IndexType = uint32_t,
+    typename DataType, 
+    uint32_t threads, 
+    uint32_t blocks_per_mp, 
+    uint32_t nnz_per_thread, 
+    uint32_t input_elements_per_thread, 
+    uint32_t retain_elements_per_thread, 
+    uint32_t merge_max_chunks, 
+    uint32_t generalized_merge_max_path_options, 
+    uint32_t merge_max_path_options, 
+    bool DEBUG_MODE=false
+    >
+    void MultiplyImplementation(
+        const spformat::dCSR<IndexType, DataType>& A, 
+        const spformat::dCSR<IndexType, DataType>& B, 
+        spformat::dCSR<IndexType, DataType>& matOut, 
+        const GPUMatrixMatrixMultiplyTraits& scheduling_traits, 
+        ExecutionStats& exec_stats);
+
+
 }
+
+
