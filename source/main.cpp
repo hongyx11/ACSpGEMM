@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
     if (argc >= 3)
         device = std::stoi(argv[2]);
 
-    bool testing = false;
+    bool testing = true;
     if(argc >= 4)
         testing = std::stoi(argv[3]) > 0 ? true : false;
 
@@ -199,8 +199,16 @@ int main(int argc, char *argv[])
     const int MaxChunksGeneralizedMerge = 512; // MAX: 865
     const int MergePathOptions = 8;
 
-    GPUMatrixMatrixMultiplyTraits DefaultTraits(Threads, BlocksPerMP, NNZPerThread, InputElementsPerThreads, RetainElementsPerThreads, MaxChunksToMerge, MaxChunksGeneralizedMerge, MergePathOptions); // DefaultTraits(128, 2, 4, 1, 8, 128, 8);
-    const bool Debug_Mode = false;
+    GPUMatrixMatrixMultiplyTraits DefaultTraits(
+        Threads, 
+        BlocksPerMP, 
+        NNZPerThread, 
+        InputElementsPerThreads, 
+        RetainElementsPerThreads, 
+        MaxChunksToMerge, 
+        MaxChunksGeneralizedMerge, 
+        MergePathOptions); // DefaultTraits(128, 2, 4, 1, 8, 128, 8);
+    const bool Debug_Mode = true;
     bool checkBitStability{false};
     DefaultTraits.preferLoadBalancing = true;
     ExecutionStats stats, warmupstats, output_stats;
@@ -249,19 +257,19 @@ int main(int argc, char *argv[])
         std::cout << ex.what() << std::endl;
     }
 
-    output_stats.normalize();
-    std::cout << output_stats;
-    std::cout << "-----------------------------------------------\n";
+    // output_stats.normalize();
+    // std::cout << output_stats;
+    // std::cout << "-----------------------------------------------\n";
 
 
-    if(checkBitStability)
-        return 0;
+    // if(checkBitStability)
+    //     return 0;
 
-    // cuSparse Multiplication
-    dCSR<IndexType,DataType> d_cusparse_result_mat;
-    bool test_data = false;
-    uint32_t cusparse_nnz;
-    float cusparse_performance = 0.0f;
+    // // cuSparse Multiplication
+    // dCSR<IndexType,DataType> d_cusparse_result_mat;
+    // bool test_data = false;
+    // uint32_t cusparse_nnz;
+    // float cusparse_performance = 0.0f;
     // try {
     //     for (uint32_t i = 0; i < warmupiterations; ++i)
     //     {
@@ -282,73 +290,73 @@ int main(int argc, char *argv[])
     //     cusparse_performance = -1.0f;
     // }
 
-    std::cout << "Overall Duration (cusparse): " << cusparse_performance / iterations << " ms\n";
-    std::cout << "-----------------------------------------------\n";
+    // std::cout << "Overall Duration (cusparse): " << cusparse_performance / iterations << " ms\n";
+    // std::cout << "-----------------------------------------------\n";
 
-    if (d_cusparse_result_mat.nnz_ != d_result_mat.nnz_)
-    {
-        std::cout << "NNZ (cuSparse " << d_cusparse_result_mat.nnz_ << "|" << d_result_mat.nnz_ << " ac-SpGEMM) NOT identical!\n";
-        printCross();
-    }
-    if (ACSpGEMM::Compare<IndexType,DataType>(d_cusparse_result_mat, d_result_mat, test_data))
-    {
-        printf("(cuSPARSE %zu | ac-SpGEMM %zu) IDENTICAL\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_);
-        printCheckMark();
-    }
-    else
-    {
-        printf("(cuSPARSE %zu | ac-SpGEMM %zu) NOT IDENTICAL | Missing: %d\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_, (int)d_cusparse_result_mat.nnz_ - (int)d_result_mat.nnz_);
-        printCross();
-    }
-    if (testing)
-    {
-        // Compare matrices cuSparse / acSpGEMM
-        if (d_cusparse_result_mat.nnz_ != d_result_mat.nnz_)
-        {
-            std::cout << "NNZ (cuSparse " << d_cusparse_result_mat.nnz_ << "|" << d_result_mat.nnz_ << " ac-SpGEMM) NOT identical!\n";
-            printCross();
-        }
-        if (ACSpGEMM::Compare<IndexType,DataType>(d_cusparse_result_mat, d_result_mat, test_data))
-        {
-            printf("(cuSPARSE %zu | ac-SpGEMM %zu) IDENTICAL\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_);
-            printCheckMark();
-        }
-        else
-        {
-            printf("(cuSPARSE %zu | ac-SpGEMM %zu) NOT IDENTICAL | Missing: %d\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_, (int)d_cusparse_result_mat.nnz_ - (int)d_result_mat.nnz_);
-            printCross();
-        }
+    // if (d_cusparse_result_mat.nnz_ != d_result_mat.nnz_)
+    // {
+    //     std::cout << "NNZ (cuSparse " << d_cusparse_result_mat.nnz_ << "|" << d_result_mat.nnz_ << " ac-SpGEMM) NOT identical!\n";
+    //     printCross();
+    // }
+    // if (ACSpGEMM::Compare<IndexType,DataType>(d_cusparse_result_mat, d_result_mat, test_data))
+    // {
+    //     printf("(cuSPARSE %zu | ac-SpGEMM %zu) IDENTICAL\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_);
+    //     printCheckMark();
+    // }
+    // else
+    // {
+    //     printf("(cuSPARSE %zu | ac-SpGEMM %zu) NOT IDENTICAL | Missing: %d\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_, (int)d_cusparse_result_mat.nnz_ - (int)d_result_mat.nnz_);
+    //     printCross();
+    // }
+    // if (testing)
+    // {
+    //     // Compare matrices cuSparse / acSpGEMM
+    //     if (d_cusparse_result_mat.nnz_ != d_result_mat.nnz_)
+    //     {
+    //         std::cout << "NNZ (cuSparse " << d_cusparse_result_mat.nnz_ << "|" << d_result_mat.nnz_ << " ac-SpGEMM) NOT identical!\n";
+    //         printCross();
+    //     }
+    //     if (ACSpGEMM::Compare<IndexType,DataType>(d_cusparse_result_mat, d_result_mat, test_data))
+    //     {
+    //         printf("(cuSPARSE %zu | ac-SpGEMM %zu) IDENTICAL\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_);
+    //         printCheckMark();
+    //     }
+    //     else
+    //     {
+    //         printf("(cuSPARSE %zu | ac-SpGEMM %zu) NOT IDENTICAL | Missing: %d\n", d_cusparse_result_mat.nnz_, d_result_mat.nnz_, (int)d_cusparse_result_mat.nnz_ - (int)d_result_mat.nnz_);
+    //         printCross();
+    //     }
 
-        /*convert(result_mat, d_result_mat);
-        convert(test_mat, d_cusparse_result_mat);
-        uint32_t number_rows_to_visit{ 1 };
-        for (int row = 0; row < test_mat.rows - 1, number_rows_to_visit > 0; ++row)
-        {
-            uint32_t interesting_row = row;
-            uint32_t ref_offset = test_mat.row_offsets[interesting_row];
-            uint32_t comp_offset = result_mat.row_offsets[interesting_row];
-            uint32_t ref_number_entries = test_mat.row_offsets[interesting_row + 1] - ref_offset;
-            uint32_t comp_number_entries = result_mat.row_offsets[interesting_row + 1] - comp_offset;
+    //     /*convert(result_mat, d_result_mat);
+    //     convert(test_mat, d_cusparse_result_mat);
+    //     uint32_t number_rows_to_visit{ 1 };
+    //     for (int row = 0; row < test_mat.rows - 1, number_rows_to_visit > 0; ++row)
+    //     {
+    //         uint32_t interesting_row = row;
+    //         uint32_t ref_offset = test_mat.row_offsets[interesting_row];
+    //         uint32_t comp_offset = result_mat.row_offsets[interesting_row];
+    //         uint32_t ref_number_entries = test_mat.row_offsets[interesting_row + 1] - ref_offset;
+    //         uint32_t comp_number_entries = result_mat.row_offsets[interesting_row + 1] - comp_offset;
 
-            if (ref_number_entries != comp_number_entries)
-            {
-                printf("Row: %u -- Entries not identical - cusparse: %u | %u acspgemm\n", row, ref_number_entries, comp_number_entries);
-                printf("cuSparse\n");
-                for (uint32_t i = ref_offset; i < ref_offset + ref_number_entries; ++i)
-                {
-                    printf("%u | ", test_mat.col_ids[i]);
-                }
-                printf("\n");
-                printf("acspgemm\n");
-                for (uint32_t i = comp_offset; i < comp_offset + comp_number_entries; ++i)
-                {
-                    printf("%u | ", result_mat.col_ids[i]);
-                }
-                printf("\n---------------------------------------------------------------------------\n");
-                --number_rows_to_visit;
-            }
-        }*/
-    }
+    //         if (ref_number_entries != comp_number_entries)
+    //         {
+    //             printf("Row: %u -- Entries not identical - cusparse: %u | %u acspgemm\n", row, ref_number_entries, comp_number_entries);
+    //             printf("cuSparse\n");
+    //             for (uint32_t i = ref_offset; i < ref_offset + ref_number_entries; ++i)
+    //             {
+    //                 printf("%u | ", test_mat.col_ids[i]);
+    //             }
+    //             printf("\n");
+    //             printf("acspgemm\n");
+    //             for (uint32_t i = comp_offset; i < comp_offset + comp_number_entries; ++i)
+    //             {
+    //                 printf("%u | ", result_mat.col_ids[i]);
+    //             }
+    //             printf("\n---------------------------------------------------------------------------\n");
+    //             --number_rows_to_visit;
+    //         }
+    //     }*/
+    // }
 
 
 

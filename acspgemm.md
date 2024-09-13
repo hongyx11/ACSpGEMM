@@ -87,16 +87,16 @@ Hence, for all combinations used, the **respective instantiation must be present
 Instantiations can be created by modifying the call to `Multiply` in `source/GPU/Multiply.cu` in line 781, which is given as
 ```cpp
 bool called = 
-	EnumOption<256, 256, 128, // Threads
-	EnumOption<3, 4, 1, // BlocksPerMP
-	EnumOption<2, 2, 1, // NNZPerThread
-	EnumOption<4, 4, 1, // InputElementsPerThreads
-	EnumOption<4, 4, 1, // RetainElementsPerThreads
-	EnumOption<16, 16, 8, // MaxChunksToMerge
-	EnumOption<256, 512, 256, // MaxChunksGeneralizedMerge
-	EnumOption<8, 8, 8, // MergePathOptions
-	EnumOption<0, 1, 1>>>>>>>>> // DebugMode
-			::call(Selection<MultiplyCall<DataType>>(call), scheduling_traits.Threads, scheduling_traits.BlocksPerMp, scheduling_traits.NNZPerThread, scheduling_traits.InputElementsPerThreads, scheduling_traits.RetainElementsPerThreads, scheduling_traits.MaxChunksToMerge, scheduling_traits.MaxChunksGeneralizedMerge, scheduling_traits.MergePathOptions, (int)Debug_Mode);
+    EnumOption<256, 256, 128, // Threads
+    EnumOption<3, 4, 1, // BlocksPerMP
+    EnumOption<2, 2, 1, // NNZPerThread
+    EnumOption<4, 4, 1, // InputElementsPerThreads
+    EnumOption<4, 4, 1, // RetainElementsPerThreads
+    EnumOption<16, 16, 8, // MaxChunksToMerge
+    EnumOption<256, 512, 256, // MaxChunksGeneralizedMerge
+    EnumOption<8, 8, 8, // MergePathOptions
+    EnumOption<0, 1, 1>>>>>>>>> // DebugMode
+            ::call(Selection<MultiplyCall<DataType>>(call), scheduling_traits.Threads, scheduling_traits.BlocksPerMp, scheduling_traits.NNZPerThread, scheduling_traits.InputElementsPerThreads, scheduling_traits.RetainElementsPerThreads, scheduling_traits.MaxChunksToMerge, scheduling_traits.MaxChunksGeneralizedMerge, scheduling_traits.MergePathOptions, (int)Debug_Mode);
 ```
 This expanding template will instantiate variants of `MultiplyCall` with the parameters specified in `EnumOption<Start, End, Step>`, so each EnumOption describes all the possible values for a certain property and all different configurations will be instantiated (e.g. BlocksPerMP with `EnumOption<3, 4, 1,` will instantiate the template call with BlocksPerMP=3 and BlocksPerMP=4)
 
@@ -106,39 +106,65 @@ For any questions please directly contact Martin Winter <martin.winter@icg.tugra
 
 # NERSC Perlmutter 
 
-## Cmake (Re)Configuration 
+## Set up Environment Variables
 ```bash
-rm -rf /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build && \
-cmake -DCMAKE_C_COMPILER=cc -DCMAKE_CXX_COMPILER=CC -DCMAKE_CUDA_COMPILER=/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/cuda/12.2/bin/nvcc \
--S/pscratch/sd/y/yuxihong/spkernels/ACSpGEMM \
--B/pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build \
--DCMAKE_INSTALL_PREFIX=/pscratch/sd/y/yuxihong/spkernels/install 
+export SPKERNELDIR=your_spkernel_directory
+export DLOC=your_data_location
 ```
 
-## Cmake build
+## Dataset 
+We will use the following dataset for testing:
+
+
+## Build and Install ACSpGEMM
+
+### Cmake Configuration 
 ```bash
-cmake --build /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build -- -j 
+rm -rf ${SPKERNELDIR}/ACSpGEMM/build && \
+cmake -DCMAKE_C_COMPILER=cc -DCMAKE_CXX_COMPILER=CC -DCMAKE_CUDA_COMPILER=${which nvcc} \
+-S${SPKERNELDIR}/ACSpGEMM \
+-B${SPKERNELDIR}/ACSpGEMM/build \
+-DCMAKE_INSTALL_PREFIX=${SPKERNELDIR}/install 
 ```
 
-## Cmake install 
+### Cmake build
 ```bash
-cmake --install /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build
+cmake --build ${SPKERNELDIR}/ACSpGEMM/build -- -j 
 ```
 
-## Build & Install in single command
+### Cmake install 
 ```bash
-cmake --build /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build -- -j && \
-cmake --install /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM/build
+cmake --install ${SPKERNELDIR}/ACSpGEMM/build
 ```
 
-## git operation 
+### Build & Install in single command 
+```bash
+cmake --build ${SPKERNELDIR}/ACSpGEMM/build -- -j && \
+cmake --install ${SPKERNELDIR}/ACSpGEMM/build
+```
+
+## ACSpGEMM Benchmark
+
+### on a small dataset
+```bash
+cmake --build /pscratch/sd/y/yuxihong/spkernels/spformat/build -- -j && \
+cmake --install /pscratch/sd/y/yuxihong/spkernels/spformat/build && \
+cmake --build ${SPKERNELDIR}/ACSpGEMM/build --target acspgemm_test -- -j && \
+${SPKERNELDIR}/ACSpGEMM/build/acspgemm_test ${DLOC}/1138_bus.mtx
+```
+
+### on a large dataset
+```bash
+${SPKERNELDIR}/ACSpGEMM/build/acspgemm_test ${DLOC}/1138_bus.mtx
+```
+
+## Git Operation 
 ```bash
 #jobname gitupload
-cd /pscratch/sd/y/yuxihong/spkernels/ACSpGEMM && \
+cd ${SPKERNELDIR}/ACSpGEMM && \
 git add . && git commit -m "pass compile with spformat" && git push && \
 cd - 
 ```
 
-avoid wrong compiler issues.
 
 

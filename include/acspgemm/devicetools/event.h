@@ -42,17 +42,17 @@
 
 namespace CU
 {
-	struct EventDestroyDeleter
-	{
-		void operator ()(CUevent event) const
-		{
-			cuEventDestroy(event);
-		}
-	};
-	
-	using unique_event = unique_handle<CUevent, nullptr, EventDestroyDeleter>;
-	
-	unique_event createEvent(unsigned int flags = CU_EVENT_DEFAULT);
+    struct EventDestroyDeleter
+    {
+        void operator ()(CUevent event) const
+        {
+            cuEventDestroy(event);
+        }
+    };
+
+    using unique_event = unique_handle<CUevent, nullptr, EventDestroyDeleter>;
+
+    unique_event createEvent(unsigned int flags = CU_EVENT_DEFAULT);
 }
 
 #endif  // INCLUDED_CUDA_EVENT

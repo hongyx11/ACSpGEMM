@@ -72,9 +72,8 @@ static void HandleError( cudaError_t err,
                          const char *file,
                          int line ) {
     if (err != cudaSuccess) {
-        printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
-                file, line );
-		  throw std::exception();
+        printf( "%s in %s at line %d\n", cudaGetErrorString( err ),file, line );
+        throw std::exception();
     }
 }
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
@@ -82,16 +81,16 @@ static void HandleError( cudaError_t err,
 
 void startTimer(cudaEvent_t& start, CUstream stream = 0)
 {
-	HANDLE_ERROR(cudaEventRecord(start, stream));
+    HANDLE_ERROR(cudaEventRecord(start, stream));
 }
 
 float recordTimer(cudaEvent_t& start, cudaEvent_t& end, CUstream stream = 0)
 {
-	float time;
-	HANDLE_ERROR(cudaEventRecord(end, stream));
-	HANDLE_ERROR(cudaEventSynchronize(end));
-	HANDLE_ERROR(cudaEventElapsedTime(&time, start, end));
-	return time;
+    float time;
+    HANDLE_ERROR(cudaEventRecord(end, stream));
+    HANDLE_ERROR(cudaEventSynchronize(end));
+    HANDLE_ERROR(cudaEventElapsedTime(&time, start, end));
+    return time;
 }
 
 // using IndexType = uint32_t;
@@ -854,39 +853,44 @@ namespace ACSpGEMM {
 
 
     template <typename IndexType, typename DataType>
-    void Multiply(const spformat::dCSR<IndexType,DataType>& A, const spformat::dCSR<IndexType,DataType>& B, spformat::dCSR<IndexType,DataType>& matOut, const GPUMatrixMatrixMultiplyTraits& scheduling_traits, ExecutionStats& exec_stats, bool Debug_Mode)
+    void Multiply(
+        const spformat::dCSR<IndexType,DataType>& A, 
+        const spformat::dCSR<IndexType,DataType>& B, 
+        spformat::dCSR<IndexType,DataType>& matOut, 
+        const GPUMatrixMatrixMultiplyTraits& scheduling_traits, 
+        ExecutionStats& exec_stats, bool Debug_Mode)
     {
+        
         MultiplyCall<IndexType,DataType> call(A, B, matOut, scheduling_traits, exec_stats);
 
         //Threads, BlocksPerMP, NNZPerTread, InputPerThread, RetainElements, MaxChungsTo Merge, MaxChunGenrel, MergePathoption, Debug
-        // bool called = 
-        // EnumOption<256, 256, 128, 
-        //     EnumOption<3, 4, 1, 
-        //         EnumOption<2, 2, 1, 
-        //             EnumOption<4, 4, 1, 
-        //                 EnumOption<4, 4, 1, 
-        //                     EnumOption<16, 16, 8, 
-        //                         EnumOption<256, 512, 256, 
-        //                             EnumOption<8, 8, 8, 
-        //                                 EnumOption<0, 1, 1>
-        //                                 >>>>>>>>
-        //     ::call(Selection<MultiplyCall<DataType>>(call), scheduling_traits.Threads, scheduling_traits.BlocksPerMp, scheduling_traits.NNZPerThread, scheduling_traits.InputElementsPerThreads, scheduling_traits.RetainElementsPerThreads, scheduling_traits.MaxChunksToMerge, scheduling_traits.MaxChunksGeneralizedMerge, scheduling_traits.MergePathOptions, (int)Debug_Mode);
-        
-
-
         bool called = 
-        EnumOption<256, 256, 128, 
-            EnumOption<3, 3, 1, 
+        EnumOption<256, 256, 128, /*Threads*/
+            EnumOption<3, 4, 1, 
                 EnumOption<2, 2, 1, 
                     EnumOption<4, 4, 1, 
                         EnumOption<4, 4, 1, 
                             EnumOption<16, 16, 8, 
-                                EnumOption<512, 512, 256, 
+                                EnumOption<256, 512, 256, 
                                     EnumOption<8, 8, 8, 
-                                        EnumOption<0, 0, 1>
+                                        EnumOption<0, 1, 1>
                                         >>>>>>>>
-            ::call(Selection<MultiplyCall<IndexType,DataType>>(call), scheduling_traits.Threads, scheduling_traits.BlocksPerMp, scheduling_traits.NNZPerThread, scheduling_traits.InputElementsPerThreads, scheduling_traits.RetainElementsPerThreads, scheduling_traits.MaxChunksToMerge, scheduling_traits.MaxChunksGeneralizedMerge, scheduling_traits.MergePathOptions, (int)Debug_Mode);
-        
+            ::call(
+                Selection<MultiplyCall<IndexType,DataType>>(call),
+                scheduling_traits.Threads,
+                scheduling_traits.BlocksPerMp,
+                scheduling_traits.NNZPerThread,
+                scheduling_traits.InputElementsPerThreads,
+                scheduling_traits.RetainElementsPerThreads,
+                scheduling_traits.MaxChunksToMerge,
+                scheduling_traits.MaxChunksGeneralizedMerge,
+                scheduling_traits.MergePathOptions,
+                (int)Debug_Mode);
+
+        // we will only run once. Enum option is a set of param choice. 
+        // if we can't find the param choice, we will not run it.
+        // Only these Enum options will be instantiated. 
+        // they are hyper params of the algorithm.
         if(!called)
         {
             std::cout << "Configuration not instantiated!\n";
@@ -908,4 +912,7 @@ namespace ACSpGEMM {
         const GPUMatrixMatrixMultiplyTraits& scheduling_traits, 
         ExecutionStats& exec_stats, 
         bool Debug_Mode);
+
+
+
 }

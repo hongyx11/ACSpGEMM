@@ -51,7 +51,7 @@
 namespace ACSpGEMM {
 
     template <
-    typename IndexType = uint32_t, 
+    typename IndexType,
     typename DataType
     >
     void Multiply(
@@ -62,7 +62,7 @@ namespace ACSpGEMM {
         ExecutionStats& exec_stats, bool Debug_Mode = false);
 
     template <
-    typename IndexType = uint32_t,
+    typename IndexType,
     typename DataType, 
     uint32_t threads, 
     uint32_t blocks_per_mp, 
